@@ -1,21 +1,16 @@
-import torch
-import torchvision
-from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms, utils, datasets  # 이미지 변환(전처리) 기능을 제공
-from torch.autograd import Variable
-from torch import optim  # 경사하강법을 이용하여 가중치를 구하기 위한 옵티마이저
+import copy
 import os  # 파일 경로에 대한 함수들을 제공
-from PIL import Image
 import random
-import torch.nn as nn
-import torch.nn.functional as F
-from matplotlib import pyplot as plt
-import numpy as np
-from torchsummary import summary
-from torch import optim
-from torch.optim.lr_scheduler import StepLR
-import time, copy
+import time
+
 import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+from PIL import Image
+from torch import optim
+from torch.utils.data import DataLoader, Dataset
+from torchsummary import summary
+from torchvision import transforms  # 이미지 변환(전처리) 기능을 제공
 
 cardboard_directory = './dataset-resized/cardboard/'
 glass_directory = './dataset-resized/glass/'
@@ -150,11 +145,12 @@ class BottleNeck(nn.Module):
         x = self.relu(x)
         return x
 
+
 class ResNet(nn.Module):
     def __init__(self, block, num_block, num_classes=10, init_weights=True):
         super().__init__()
 
-        self.in_channels=64
+        self.in_channels = 64
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False),
@@ -168,7 +164,7 @@ class ResNet(nn.Module):
         self.conv4_x = self._make_layer(block, 256, num_block[2], 2)
         self.conv5_x = self._make_layer(block, 512, num_block[3], 2)
 
-        self.avg_pool = nn.AdaptiveAvgPool2d((1,1))
+        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         # weights inittialization
@@ -184,7 +180,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self,x):
+    def forward(self, x):
         output = self.conv1(x)
         output = self.conv2_x(output)
         x = self.conv3_x(output)
@@ -209,8 +205,10 @@ class ResNet(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
+
 def resnet18():
-    return ResNet(BasicBlock, [2,2,2,2])
+    return ResNet(BasicBlock, [2, 2, 2, 2])
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = resnet18().to(device)
@@ -222,11 +220,14 @@ loss_func = nn.CrossEntropyLoss(reduction='sum')
 opt = optim.Adam(model.parameters(), lr=0.001)
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+
 lr_scheduler = ReduceLROnPlateau(opt, mode="min", factor=0.1, patience=10)
+
 
 def get_lr(opt):
     for param_group in opt.param_groups:
         return param_group['lr']
+
 
 # function to calculate metric per mini-batch
 def metric_batch(output, target):
@@ -274,15 +275,16 @@ def loss_epoch(model, loss_func, dataset_dl, sanity_check=False, opt=None):
 
     return loss, metric
 
+
 def train_val(model, params):
-    num_epochs=params['num_epochs']
-    loss_func=params["loss_func"]
-    opt=params["optimizer"]
-    train_dl=params["train_dl"]
-    val_dl=params["val_dl"]
-    sanity_check=params["sanity_check"]
-    lr_scheduler=params["lr_scheduler"]
-    path2weights=params["path2weights"]
+    num_epochs = params['num_epochs']
+    loss_func = params["loss_func"]
+    opt = params["optimizer"]
+    train_dl = params["train_dl"]
+    val_dl = params["val_dl"]
+    sanity_check = params["sanity_check"]
+    lr_scheduler = params["lr_scheduler"]
+    path2weights = params["path2weights"]
 
     loss_history = {'train': [], 'val': []}
     metric_history = {'train': [], 'val': []}
@@ -296,7 +298,7 @@ def train_val(model, params):
 
     for epoch in range(num_epochs):
         current_lr = get_lr(opt)
-        print('Epoch {}/{}, current lr={}'.format(epoch, num_epochs-1, current_lr))
+        print('Epoch {}/{}, current lr={}'.format(epoch, num_epochs - 1, current_lr))
 
         model.train()
         train_loss, train_metric = loss_epoch(model, loss_func, train_dl, sanity_check, opt)
@@ -319,24 +321,27 @@ def train_val(model, params):
 
         lr_scheduler.step(val_loss)
 
-        print('train loss: %.6f, val loss: %.6f, accuracy: %.2f, time: %.4f min' %(train_loss, val_loss, 100*val_metric, (time.time()-start_time)/60))
-        print('-'*10)
+        print('train loss: %.6f, val loss: %.6f, accuracy: %.2f, time: %.4f min' % (
+            train_loss, val_loss, 100 * val_metric, (time.time() - start_time) / 60))
+        print('-' * 10)
 
     model.load_state_dict(best_model_wts)
 
     return model, loss_history, metric_history
 
+
 # definc the training parameters
 params_train = {
-    'num_epochs':47,
-    'optimizer':opt,
-    'loss_func':loss_func,
-    'train_dl':train_dataloader,
-    'val_dl':val_dataloader,
-    'sanity_check':False,
-    'lr_scheduler':lr_scheduler,
-    'path2weights':'./models/weights.pt',
+    'num_epochs': 47,
+    'optimizer': opt,
+    'loss_func': loss_func,
+    'train_dl': train_dataloader,
+    'val_dl': val_dataloader,
+    'sanity_check': False,
+    'lr_scheduler': lr_scheduler,
+    'path2weights': './models/weights.pt',
 }
+
 
 # create the directory that stores weights.pt
 def createFolder(directory):
@@ -345,16 +350,18 @@ def createFolder(directory):
             os.makedirs(directory)
     except 'OSerror':
         print('Error')
+
+
 createFolder('./models')
 model, loss_hist, metric_hist = train_val(model, params_train)
 
 # Train-Validation Progress
-num_epochs=params_train["num_epochs"]
+num_epochs = params_train["num_epochs"]
 
 # plot loss progress
 plt.title("Train-Val Loss")
-plt.plot(range(1,num_epochs+1),loss_hist["train"],label="train")
-plt.plot(range(1,num_epochs+1),loss_hist["val"],label="val")
+plt.plot(range(1, num_epochs + 1), loss_hist["train"], label="train")
+plt.plot(range(1, num_epochs + 1), loss_hist["val"], label="val")
 plt.ylabel("Loss")
 plt.xlabel("Training Epochs")
 plt.legend()
@@ -362,8 +369,8 @@ plt.show()
 
 # plot accuracy progress
 plt.title("Train-Val Accuracy")
-plt.plot(range(1,num_epochs+1),metric_hist["train"],label="train")
-plt.plot(range(1,num_epochs+1),metric_hist["val"],label="val")
+plt.plot(range(1, num_epochs + 1), metric_hist["train"], label="train")
+plt.plot(range(1, num_epochs + 1), metric_hist["val"], label="val")
 plt.ylabel("Accuracy")
 plt.xlabel("Training Epochs")
 plt.legend()
