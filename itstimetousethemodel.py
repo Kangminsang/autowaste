@@ -15,3 +15,4 @@ model = resnet18().to(device)
 model.load_state_dict(torch.load('./models/weights.pt', map_location=device))
 from torchsummary import summary
 summary(model, (3, 224, 224), device=device.type)
+
