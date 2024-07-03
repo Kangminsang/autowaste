@@ -12,44 +12,6 @@ from torch.utils.data import DataLoader, Dataset
 from torchsummary import summary
 from torchvision import transforms  # 이미지 변환(전처리) 기능을 제공
 
-cardboard_directory = './dataset-resized/cardboard/'
-glass_directory = './dataset-resized/glass/'
-metal_directory = './dataset-resized/metal/'
-paper_directory = './dataset-resized/paper/'
-plastic_directory = './dataset-resized/plastic/'
-trash_directory = './dataset-resized/trash/'
-
-cardboard_images_filepaths = sorted([os.path.join(cardboard_directory, f)
-                                     for f in os.listdir(cardboard_directory)])
-glass_images_filepaths = sorted([os.path.join(glass_directory, f)
-                                 for f in os.listdir(glass_directory)])
-metal_images_filepaths = sorted([os.path.join(metal_directory, f)
-                                 for f in os.listdir(metal_directory)])
-paper_images_filepaths = sorted([os.path.join(paper_directory, f)
-                                 for f in os.listdir(paper_directory)])
-plastic_images_filepaths = sorted([os.path.join(plastic_directory, f)
-                                   for f in os.listdir(plastic_directory)])
-trash_images_filepaths = sorted([os.path.join(trash_directory, f)
-                                 for f in os.listdir(trash_directory)])
-
-images_filepaths = [*cardboard_images_filepaths, *glass_images_filepaths, *metal_images_filepaths,
-                    *paper_images_filepaths, *plastic_images_filepaths, *trash_images_filepaths]
-random.shuffle(images_filepaths)
-train_filepaths = images_filepaths[:2022]
-val_filepaths = images_filepaths[2022:-252]
-test_filepaths = images_filepaths[-252:]
-print(len(images_filepaths), len(train_filepaths), len(val_filepaths), len(test_filepaths))
-print(images_filepaths[1].split('/')[2])
-print(images_filepaths[1])
-
-imgtransform = transforms.Compose([
-    transforms.RandomRotation(40),
-    transforms.RandomHorizontalFlip(),
-    transforms.Resize((283, 197)),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])
-
 
 class Wastedataset(Dataset):
     def __init__(self, file_list, transform=None, phase='train'):
@@ -68,15 +30,6 @@ class Wastedataset(Dataset):
         labels = {"cardboard": 0, "glass": 1, "metal": 2, "paper": 3, "plastic": 4, "trash": 5}
         label = labels.get(label)
         return img_t, label
-
-
-train_dataset = Wastedataset(train_filepaths, transform=imgtransform, phase="train")
-val_dataset = Wastedataset(val_filepaths, transform=imgtransform, phase="train")
-test_dataset = Wastedataset(test_filepaths, transform=imgtransform, phase="train")
-
-train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 
 class BasicBlock(nn.Module):
@@ -210,20 +163,6 @@ def resnet18():
     return ResNet(BasicBlock, [2, 2, 2, 2])
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = resnet18().to(device)
-x = torch.randn(3, 3, 283, 197).to(device)
-output = model(x)
-print(output.size())
-summary(model, (3, 224, 224), device=device.type)
-loss_func = nn.CrossEntropyLoss(reduction='sum')
-opt = optim.Adam(model.parameters(), lr=0.001)
-
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-
-lr_scheduler = ReduceLROnPlateau(opt, mode="min", factor=0.1, patience=10)
-
-
 def get_lr(opt):
     for param_group in opt.param_groups:
         return param_group['lr']
@@ -330,19 +269,6 @@ def train_val(model, params):
     return model, loss_history, metric_history
 
 
-# definc the training parameters
-params_train = {
-    'num_epochs': 47,
-    'optimizer': opt,
-    'loss_func': loss_func,
-    'train_dl': train_dataloader,
-    'val_dl': val_dataloader,
-    'sanity_check': False,
-    'lr_scheduler': lr_scheduler,
-    'path2weights': './models/weights.pt',
-}
-
-
 # create the directory that stores weights.pt
 def createFolder(directory):
     try:
@@ -352,27 +278,97 @@ def createFolder(directory):
         print('Error')
 
 
-createFolder('./models')
-model, loss_hist, metric_hist = train_val(model, params_train)
+if __name__ == '__main__':
+    cardboard_directory = './dataset-resized/cardboard/'
+    glass_directory = './dataset-resized/glass/'
+    metal_directory = './dataset-resized/metal/'
+    paper_directory = './dataset-resized/paper/'
+    plastic_directory = './dataset-resized/plastic/'
+    trash_directory = './dataset-resized/trash/'
 
-# Train-Validation Progress
-num_epochs = params_train["num_epochs"]
+    cardboard_images_filepaths = sorted([os.path.join(cardboard_directory, f)
+                                         for f in os.listdir(cardboard_directory)])
+    glass_images_filepaths = sorted([os.path.join(glass_directory, f)
+                                     for f in os.listdir(glass_directory)])
+    metal_images_filepaths = sorted([os.path.join(metal_directory, f)
+                                     for f in os.listdir(metal_directory)])
+    paper_images_filepaths = sorted([os.path.join(paper_directory, f)
+                                     for f in os.listdir(paper_directory)])
+    plastic_images_filepaths = sorted([os.path.join(plastic_directory, f)
+                                       for f in os.listdir(plastic_directory)])
+    trash_images_filepaths = sorted([os.path.join(trash_directory, f)
+                                     for f in os.listdir(trash_directory)])
 
-# plot loss progress
-plt.title("Train-Val Loss")
-plt.plot(range(1, num_epochs + 1), loss_hist["train"], label="train")
-plt.plot(range(1, num_epochs + 1), loss_hist["val"], label="val")
-plt.ylabel("Loss")
-plt.xlabel("Training Epochs")
-plt.legend()
-plt.show()
+    images_filepaths = [*cardboard_images_filepaths, *glass_images_filepaths, *metal_images_filepaths,
+                        *paper_images_filepaths, *plastic_images_filepaths, *trash_images_filepaths]
+    random.shuffle(images_filepaths)
+    train_filepaths = images_filepaths[:2022]
+    val_filepaths = images_filepaths[2022:-252]
+    test_filepaths = images_filepaths[-252:]
+    print(len(images_filepaths), len(train_filepaths), len(val_filepaths), len(test_filepaths))
+    print(images_filepaths[1].split('/')[2])
+    print(images_filepaths[1])
 
-# plot accuracy progress
-plt.title("Train-Val Accuracy")
-plt.plot(range(1, num_epochs + 1), metric_hist["train"], label="train")
-plt.plot(range(1, num_epochs + 1), metric_hist["val"], label="val")
-plt.ylabel("Accuracy")
-plt.xlabel("Training Epochs")
-plt.legend()
-plt.show()
-torch.save(model.state_dict(), params_train['path2weights'])
+    imgtransform = transforms.Compose([
+        transforms.RandomRotation(40),
+        transforms.RandomHorizontalFlip(),
+        transforms.Resize((283, 197)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+    train_dataset = Wastedataset(train_filepaths, transform=imgtransform, phase="train")
+    val_dataset = Wastedataset(val_filepaths, transform=imgtransform, phase="train")
+    test_dataset = Wastedataset(test_filepaths, transform=imgtransform, phase="train")
+
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = resnet18().to(device)
+    x = torch.randn(3, 3, 283, 197).to(device)
+    output = model(x)
+    print(output.size())
+    summary(model, (3, 224, 224), device=device.type)
+    loss_func = nn.CrossEntropyLoss(reduction='sum')
+    opt = optim.Adam(model.parameters(), lr=0.001)
+
+    from torch.optim.lr_scheduler import ReduceLROnPlateau
+
+    lr_scheduler = ReduceLROnPlateau(opt, mode="min", factor=0.1, patience=10)
+    # definc the training parameters
+    params_train = {
+        'num_epochs': 47,
+        'optimizer': opt,
+        'loss_func': loss_func,
+        'train_dl': train_dataloader,
+        'val_dl': val_dataloader,
+        'sanity_check': False,
+        'lr_scheduler': lr_scheduler,
+        'path2weights': './models/weights.pt',
+    }
+
+    createFolder('./models')
+    model, loss_hist, metric_hist = train_val(model, params_train)
+
+    # Train-Validation Progress
+    num_epochs = params_train["num_epochs"]
+
+    # plot loss progress
+    plt.title("Train-Val Loss")
+    plt.plot(range(1, num_epochs + 1), loss_hist["train"], label="train")
+    plt.plot(range(1, num_epochs + 1), loss_hist["val"], label="val")
+    plt.ylabel("Loss")
+    plt.xlabel("Training Epochs")
+    plt.legend()
+    plt.show()
+
+    # plot accuracy progress
+    plt.title("Train-Val Accuracy")
+    plt.plot(range(1, num_epochs + 1), metric_hist["train"], label="train")
+    plt.plot(range(1, num_epochs + 1), metric_hist["val"], label="val")
+    plt.ylabel("Accuracy")
+    plt.xlabel("Training Epochs")
+    plt.legend()
+    plt.show()
+    torch.save(model.state_dict(), params_train['path2weights'])
