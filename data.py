@@ -6,7 +6,6 @@ from torch.autograd import Variable
 from torch import optim  # 경사하강법을 이용하여 가중치를 구하기 위한 옵티마이저
 import os  # 파일 경로에 대한 함수들을 제공
 from PIL import Image
-from tqdm import tqdm_notebook as tqdm  # 진행 상황 표현
 import random
 import torch.nn as nn
 import torch.nn.functional as F
@@ -213,7 +212,7 @@ class ResNet(nn.Module):
 def resnet18():
     return ResNet(BasicBlock, [2,2,2,2])
 
-device = torch.device('cuda')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = resnet18().to(device)
 x = torch.randn(3, 3, 283, 197).to(device)
 output = model(x)
@@ -344,7 +343,7 @@ def createFolder(directory):
     try:
         if not os.path.exists(directory):
             os.makedirs(directory)
-    except OSerror:
+    except 'OSerror':
         print('Error')
 createFolder('./models')
 model, loss_hist, metric_hist = train_val(model, params_train)
